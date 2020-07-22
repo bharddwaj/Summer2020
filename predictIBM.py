@@ -3,6 +3,38 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 
+class Model(tf.keras.Model):
+  def __init__(self):
+    super().__init__()
+    self.lstm = tf.keras.layers.LSTM(8, input_shape=x_train.shape[-2:])
+    self.d1 = tf.keras.layers.Dense(1)
+    self.optimizer = tf.keras.optimizers.Adam()
+    
+
+  def call(self, x):
+    # using the functional api to do the feed-forward in this model subclassing
+    x = self.lstm(x)
+    x = self.d1(x)
+    return x
+
+  @tf.function
+  def loss(self,target_y, predicted_y):
+    '''assuming the target and predicted are the same length'''
+    # print(target_y.shape)
+    # print(predicted_y.shape)
+    return 100*(tf.math.reduce_sum(tf.math.abs(target_y - predicted_y))) #total absolutee error without dividing by the batch size
+
+@tf.function
+def train(model, inputs, outputs, learning_rate):
+  with tf.GradientTape() as tape:
+    current_loss = model.loss(outputs, model(inputs))
+  gradients = tape.gradient(current_loss, model.trainable_variables)
+  model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+  
+  train_loss(current_loss)
+  train_accuracy(outputs, model(inputs))
+
+
 url = "https://raw.githubusercontent.com/bharddwaj/Summer2020/master/US1.IBM_190716_200715.csv"
 stock = pd.read_csv(url)
 
@@ -80,6 +112,8 @@ os.environ['KMP_DUPLICATE_LIB_OK']='True'
 '''
 this os stuff is to fix he libiomp5.dylib error
 '''
+predictions = list(map(lambda x: 1000000*x, predictions))
+y_test = list(map(lambda x: 1000000*x, y_test))
 plt.plot(indices,predictions,color='red')
 plt.plot(indices,y_test)
 plt.show()
