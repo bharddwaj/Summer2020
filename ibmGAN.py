@@ -3,6 +3,8 @@ import time
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt 
+import seaborn as sns
+
 url = "https://raw.githubusercontent.com/bharddwaj/Summer2020/master/US1.IBM_190716_200715.csv"
 stock = pd.read_csv(url)
 
@@ -33,9 +35,7 @@ def univariate_data(start_index, end_index, history_size, target_size,dataset):
         labels.append(dataset[i+target_size]) #training on predicting in the future so need labels in future
     return np.array(data), np.array(labels)
 
-# x_train, y_train = univariate_data(0,1247,10,1)
 
-# x_test, y_test = univariate_data(1197,1257,10,1)
 BATCH_SIZE = 256
 BUFFER_SIZE = 10000
 start_index = 0
@@ -81,13 +81,13 @@ noise = tf.random.normal([1, 100])
 generated_image = generator(noise)
 print(generated_image.shape)
 
-# '''
-# https://stackoverflow.com/questions/53014306/error-15-initializing-libiomp5-dylib-but-found-libiomp5-dylib-already-initial
-# '''
-# import os
+'''
+https://stackoverflow.com/questions/53014306/error-15-initializing-libiomp5-dylib-but-found-libiomp5-dylib-already-initial
+'''
+import os
 
-# os.environ['KMP_DUPLICATE_LIB_OK']='True'
-# '''
+os.environ['KMP_DUPLICATE_LIB_OK']='True'
+'''
 # this os stuff is to fix he libiomp5.dylib error
 # '''
 # plt.imshow(generated_image[0, :, :, 0], cmap='gray')
@@ -106,6 +106,7 @@ def discriminator_loss(real_output, fake_output):
     return total_loss
 
 def generator_loss(fake_output):
+    '''in the future: look for a better loss fn for the generator'''
     return cross_entropy(tf.ones_like(fake_output), fake_output)
 
 generator_optimizer = tf.keras.optimizers.Adam(1e-4)
@@ -150,10 +151,33 @@ def train(dataset, epochs):
     print ('Time for epoch {} is {} sec'.format(epoch + 1, time.time()-start))
 
 
-train(train_univariate, EPOCHS)
+# train(train_univariate, EPOCHS)
+generator = tf.keras.models.load_model('saved_models/generator')
+discriminator = tf.keras.models.load_model('saved_models/discriminator')
+# gen_data = generator(noise)
+# decision = discriminator(gen_data)
+# print(gen_data.numpy()[0]) 
+# plt.plot(list(range(gen_data.shape[1])), gen_data.numpy()[0])
+# plt.show()
+# generator.save('saved_models/generator')
+# discriminator.save('saved_models/discriminator')
+# compare the statistics of the generated data to the real data
+# make a histogram of the generated first minutes and see if it creates a normal distribution
+# can make the generator loss also include functions that make sure that the statisical properties are retained. cross entropy + normality (example)
 
-gen_data = generator(noise)
-decision = discriminator(gen_data)
-print(decision) 
+## Let us see if the first data point of generated data is similar to normal distribution
+# first_points = []
+# for i in range(10000):
+#   noise = tf.random.uniform([BATCH_SIZE, noise_dim])
+#   gen_data = generator(noise)
+#   # print(gen_data.numpy()[0][0][0]) 
+#   first_points.append(gen_data.numpy()[0][0][0])
+#   plt.plot(list(range(gen_data.shape[1])), gen_data.numpy()[0])
+# plt.show()
+# first_points = np.asarray(first_points)
+# ax = sns.distplot(first_points)
 
-
+for i in range(x_train.shape[0]):
+  print(i)
+  plt.plot(list(range(10)),x_train[i])
+plt.show()
