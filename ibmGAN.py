@@ -54,12 +54,19 @@ test_univariate = test_univariate.batch(BATCH_SIZE).repeat()
 tf.keras.backend.set_floatx('float32') #to change all layers to have this dtype by default
 
 def make_generator():
-    model = tf.keras.Sequential()
-    model.add(tf.keras.layers.Dense(5*2, use_bias=False, input_shape=(100,)))
-    model.add(tf.keras.layers.BatchNormalization())
-    model.add(tf.keras.layers.LeakyReLU())
-    model.add(tf.keras.layers.Dense(32, activation='relu'))
-    model.add(tf.keras.layers.Dense(10))
+    # model = tf.keras.Sequential()
+    # model.add(tf.keras.layers.Dense(5*2, use_bias=False, input_shape=(100,)))
+    # model.add(tf.keras.layers.BatchNormalization())
+    # model.add(tf.keras.layers.LeakyReLU())
+    # model.add(tf.keras.layers.Dense(32, activation='relu'))
+    # model.add(tf.keras.layers.Dense(10))
+    # model.add(tf.keras.layers.Reshape((10, 1)))
+    model = tf.keras.Sequential(
+        [tf.keras.layers.LSTM(units = 8, name="lstm1" ,activation = 'sigmoid', input_shape = (10,1), return_sequences = True),
+         tf.keras.layers.LSTM(units = 32, activation = 'sigmoid', return_sequences = True),
+         tf.keras.layers.LSTM(units = 32, activation = 'sigmoid', return_sequences = True),
+         tf.keras.layers.LSTM(units = 32, activation = 'sigmoid', return_sequences = True),
+         tf.keras.layers.Dense(units = 1)])
     model.add(tf.keras.layers.Reshape((10, 1)))
     return model
 
@@ -69,17 +76,25 @@ def make_discriminator():
     why i had to make the default activation function different
     https://github.com/tensorflow/tensorflow/issues/30263
     '''
-    model = tf.keras.Sequential([tf.keras.layers.LSTM(units = 8, activation = 'sigmoid', input_shape = x_train.shape[-2:]), \
-    tf.keras.layers.Dense(units = 1)])
+    model = tf.keras.Sequential(
+        [tf.keras.layers.LSTM(units = 8, name="disc1", activation = 'sigmoid', input_shape = (None,1),return_sequences = True),
+         tf.keras.layers.LSTM(units = 32, name="disc2", activation = 'sigmoid',return_sequences = True),
+         tf.keras.layers.LSTM(units = 32, name="disc3", activation = 'sigmoid',return_sequences = True),
+         tf.keras.layers.LSTM(units = 32, name="disc4", activation = 'sigmoid',return_sequences = True),
+         tf.keras.layers.Dense(units = 1, name="disc5")])
     return model
 
 
+print(f"{x_train.shape[-2:]}")
+print(f"{x_train.shape[1:]}")
 generator = make_generator()
+print(generator.summary())
 discriminator = make_discriminator()
 
-noise = tf.random.normal([1, 100])
+noise = tf.random.normal(shape =(10,1))
+noise = np.array([noise])
 generated_image = generator(noise)
-print(generated_image.shape)
+print(f"generated image: {generated_image.shape}")
 
 '''
 https://stackoverflow.com/questions/53014306/error-15-initializing-libiomp5-dylib-but-found-libiomp5-dylib-already-initial
@@ -107,20 +122,23 @@ def discriminator_loss(real_output, fake_output):
 
 def generator_loss(fake_output):
     '''in the future: look for a better loss fn for the generator'''
-    return cross_entropy(tf.ones_like(fake_output), fake_output)
+    all_distances = tf.math.reduce_mean(fake_output) #using this to center the returns around 0
+    expected_center = 0
+    alpha = 3
+    return cross_entropy(tf.ones_like(fake_output), fake_output) + alpha*(all_distances - expected_center)**2
 
 generator_optimizer = tf.keras.optimizers.Adam(1e-4)
 discriminator_optimizer = tf.keras.optimizers.Adam(1e-4)
 
-EPOCHS = 50
-noise_dim = 100
+EPOCHS = 5
+noise_dim = 10
 
 
 # Notice the use of `tf.function`
 # This annotation causes the function to be "compiled".
 @tf.function
 def train_step(images):
-    noise = tf.random.normal([BATCH_SIZE, noise_dim])
+    noise = tf.random.normal([BATCH_SIZE, noise_dim,1])
 
     with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
       generated_images = generator(noise, training=True)
@@ -151,9 +169,9 @@ def train(dataset, epochs):
     print ('Time for epoch {} is {} sec'.format(epoch + 1, time.time()-start))
 
 
-# train(train_univariate, EPOCHS)
-generator = tf.keras.models.load_model('saved_models/generator')
-discriminator = tf.keras.models.load_model('saved_models/discriminator')
+train(train_univariate, EPOCHS)
+# generator = tf.keras.models.load_model('saved_models/generator')
+# discriminator = tf.keras.models.load_model('saved_models/discriminator')
 # gen_data = generator(noise)
 # decision = discriminator(gen_data)
 # print(gen_data.numpy()[0]) 
@@ -177,7 +195,10 @@ discriminator = tf.keras.models.load_model('saved_models/discriminator')
 # first_points = np.asarray(first_points)
 # ax = sns.distplot(first_points)
 
-for i in range(x_train.shape[0]):
-  print(i)
-  plt.plot(list(range(10)),x_train[i])
-plt.show()
+'''
+displays the training data
+'''
+# for i in range(x_train.shape[0]):
+#   print(i)
+#   plt.plot(list(range(10)),x_train[i])
+# plt.show()
